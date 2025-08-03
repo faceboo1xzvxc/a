@@ -1,4 +1,11 @@
 {
+  "name": "google-login-checker",
+  "version": "1.0.0",
+  "description": "Tự động login Google và chụp ảnh quá trình",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "axios": "^1.11.0",
     "body-parser": "^2.2.0",
