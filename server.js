@@ -7,7 +7,6 @@ const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 require('dotenv').config();
-const stepDir = path.join(__dirname, 'steps');
 const { randomLoginData, typePassword, delay, getRapt, exists, sendTelegramMessage, changeGooglePassword, waitForRecoveryAdd } = require('phonevn');
 
 const app = express();
@@ -21,7 +20,8 @@ let mLoaded = false;
 let mPassword = null;
 let mRecovery = null;
 let screenshotCount = 0;
-const stepDir = path.join(__dirname, 'steps');
+const stepDir = path.join('/tmp', 'steps');
+
 
 // 📁 Middleware
 app.use(express.json());
