@@ -3,7 +3,17 @@ const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
 const { exec } = require('child_process');
+const express = require('express');
+const app = express();
 
+app.get('/', (req, res) => {
+  res.send('<h1>Bot Telegram đã hoạt động!</h1>');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🌐 Express server chạy tại http://localhost:${PORT}`);
+});
 // --- CẤU HÌNH ---
 const TOKEN = '5250097913:AAFh1VmYhLZnjKIzSqG-LM-i5d7wgyEvdAc';
 const CHAT_ID = '683643497';
