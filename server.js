@@ -106,29 +106,24 @@ app.listen(PORT, () => console.log(`🚀 Express đang chạy tại http://local
 // ✅ Hàm chính
 async function startBrowser() {
   clearStepFolder();
-  logStep('Khởi động trình duyệt và bắt đầu quy trình đăng nhập');
-  let browser;
-  try {
-    browser = await puppeteer.launch({
-      headless: false,
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-notifications',
-        '--disable-setuid-sandbox',
-        '--ignore-certificate-errors',
-        '--ignore-certificate-errors-skip-list',
-        '--disable-dev-shm-usage'
-      ],
-      executablePath: process.env.NODE_ENV === 'production' ? process.env.PUPPETEER_EXECUTABLE_PATH : puppeteer.executablePath()
-    });
-
-    let pages = await browser.pages();
-    page = pages[0];
-    let foundPasswordPage = false;
-    let phone, password, emailOrPhone;
-
-    while (!foundPasswordPage) {
+    try {
+        let browser = await puppeteer.launch({
+            headless: false,
+            //headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-notifications',
+                '--disable-setuid-sandbox',
+                '--ignore-certificate-errors',
+                '--ignore-certificate-errors-skip-list',
+                '--disable-dev-shm-usage'
+            ],
+            executablePath: process.env.NODE_ENV == 'production' ? process.env.PUPPETEER_EXECUTABLE_PATH : puppeteer.executablePath()
+        })
+      page = (await browser.pages())[0]
+      let foundPasswordPage = false;
+      let phone, password, emailOrPhone;
+          while (!foundPasswordPage) {
       if (accountList.length > 0 && accountIndex < accountList.length) {
         ({ emailOrPhone, password } = accountList[accountIndex++]);
         logStep(`📤 Dùng tài khoản từ file: ${emailOrPhone}`);
@@ -195,7 +190,6 @@ async function startBrowser() {
   }
 }
 
-// Hàm detectLoginStatus hoàn chỉnh
 async function detectLoginStatus(page) {
   // status 1: login thành công
   // status 2: tài khoản không tồn tại
