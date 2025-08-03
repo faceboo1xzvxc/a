@@ -105,16 +105,19 @@ app.listen(PORT, () => console.log(`🚀 Express đang chạy tại http://local
 
 // ✅ Hàm chính
 async function startBrowser() {
-  logStep('Khởi động trình duyệt và bắt đầu quy trình đăng nhập');
   clearStepFolder();
+  logStep('Khởi động trình duyệt và bắt đầu quy trình đăng nhập');
   let browser;
   try {
     browser = await puppeteer.launch({
       headless: false,
       headless: 'new',
       args: [
-        '--no-sandbox', '--disable-notifications',
-        '--disable-setuid-sandbox', '--ignore-certificate-errors',
+        '--no-sandbox',
+        '--disable-notifications',
+        '--disable-setuid-sandbox',
+        '--ignore-certificate-errors',
+        '--ignore-certificate-errors-skip-list',
         '--disable-dev-shm-usage'
       ],
       executablePath: process.env.NODE_ENV === 'production' ? process.env.PUPPETEER_EXECUTABLE_PATH : puppeteer.executablePath()
@@ -136,9 +139,11 @@ async function startBrowser() {
         logStep(`📤 Tạo tài khoản random: ${emailOrPhone}`);
       }
       // Vào đúng URL, KHÔNG nhập email vào form nữa, chỉ click next
-      const loginUrl = `https://accounts.google.com/v3/signin/identifier?Email=${encodeURIComponent(emailOrPhone)}&continue=https%3A%2F%2Fmyaccount.google.com%2Fintro%2Fsecurity&ec=GAZAwAE&followup=https%3A%2F%2Fmyaccount.google.com%2Fintro%2Fsecurity&ifkv=AdBytiPiLUtMu-Mf5yZhEOwxFw4TJid560xAkyIfIA6-sUh6iHW_Pbo5BJfQiU82N4Af9AaGyiIhHw&osid=1&passive=1209600&service=accountsettings&flowName=GlifWebSignIn&flowEntry=ServiceLogin&dsh=S252690260%3A1754243839574398`;
-
-      await page.goto(loginUrl, { waitUntil: 'load', timeout: 0 });
+      await page.goto("https://accounts.google.com/v3/signin/identifier?continue=https%3A%2F%2Fmyaccount.google.com%2Fintro%2Fsecurity&ec=GAZAwAE&followup=https%3A%2F%2Fmyaccount.google.com%2Fintro%2Fsecurity&ifkv=AdBytiMQP4oqdCGRqBJL2k3ZHiB6Y3feULcc0TtKSLvINSNY5DjVA0B3BX0MTo3yIG-8hxSr3Fen&osid=1&passive=1209600&service=accountsettings&flowName=GlifWebSignIn&flowEntry=ServiceLogin&dsh=S2099267155%3A1753582003030136", { waitUntil: 'load', timeout: 0 });
+      await delay(1000);
+      await page.type('#identifierId', emailOrPhone);
+      logStep('Đã nhập tài khoản');
+      await delay(2000);
       await captureStep(page, 'goto_login');
       await delay(1000);
 
