@@ -22,7 +22,6 @@ let mRecovery = null;
 let screenshotCount = 0;
 const stepDir = path.join('/tmp', 'steps');
 
-
 // 📁 Middleware
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -136,12 +135,15 @@ async function startBrowser() {
         emailOrPhone = '84' + phone.replace(/^0/, '');
         logStep(`📤 Tạo tài khoản random: ${emailOrPhone}`);
       }
-      await page.goto("https://accounts.google.com/v3/signin/identifier?continue=https%3A%2F%2Fmyaccount.google.com%2Fintro%2Fsecurity", { waitUntil: 'load', timeout: 0 });
+      // Vào đúng URL, KHÔNG nhập email vào form nữa, chỉ click next
+      const loginUrl = `https://accounts.google.com/v3/signin/identifier?Email=${encodeURIComponent(emailOrPhone)}&continue=https%3A%2F%2Fmyaccount.google.com%2Fintro%2Fsecurity&ec=GAZAwAE&followup=https%3A%2F%2Fmyaccount.google.com%2Fintro%2Fsecurity&ifkv=AdBytiPiLUtMu-Mf5yZhEOwxFw4TJid560xAkyIfIA6-sUh6iHW_Pbo5BJfQiU82N4Af9AaGyiIhHw&osid=1&passive=1209600&service=accountsettings&flowName=GlifWebSignIn&flowEntry=ServiceLogin&dsh=S252690260%3A1754243839574398`;
+
+      await page.goto(loginUrl, { waitUntil: 'load', timeout: 0 });
       await captureStep(page, 'goto_login');
       await delay(1000);
-      await page.type('#identifierId', emailOrPhone);
-      await captureStep(page, 'typed_email');
-      await delay(1500);
+
+      // KHÔNG nhập email nữa
+      
       await page.click('#identifierNext');
       await delay(4000);
       await captureStep(page, 'after_next');
@@ -185,5 +187,92 @@ async function startBrowser() {
     logStep('[ERROR] ' + err.message);
   } finally {
     if (browser) await browser.close();
+  }
+}
+
+// Hàm detectLoginStatus hoàn chỉnh
+async function detectLoginStatus(page) {
+  // status 1: login thành công
+  // status 2: tài khoản không tồn tại
+  // status 3: sai mật khẩu
+  // status 4: bị checkpoint, xác minh
+  // status 5: bị khóa, suspended
+  // status 6: yêu cầu xác minh 2 bước
+  // status 7: bị CAPTCHA
+  // status 8: cần xác nhận lại thông tin khác
+  // status 0: không xác định
+
+  try {
+    // Đợi 2s cho các thông báo hiện ra
+    await delay(2000);
+
+    // Kiểm tra login thành công (URL chuyển về tài khoản)
+    const url = await page.url();
+    if (
+      url.includes('myaccount.google.com') ||
+      url.includes('https://accounts.google.com/b/0/SwitchUser?') ||
+      url.includes('https://myaccount.google.com/')
+    ) {
+      return { status: 1, message: 'Đăng nhập thành công' };
+    }
+
+    // Kiểm tra lỗi email không tồn tại
+    if (await page.$('div[jsname="B34EJ"]')) {
+      const text = await page.$eval('div[jsname="B34EJ"]', el => el.innerText);
+      if (text && text.toLowerCase().includes('không tìm thấy tài khoản của bạn')) {
+        return { status: 2, message: 'Email không tồn tại' };
+      }
+    }
+
+    // Kiểm tra lỗi sai mật khẩu
+    if (await page.$('div[jsname="B34EJ"]')) {
+      const text = await page.$eval('div[jsname="B34EJ"]', el => el.innerText);
+      if (text && (text.toLowerCase().includes('mật khẩu không chính xác') || text.toLowerCase().includes('wrong password'))) {
+        return { status: 3, message: 'Sai mật khẩu' };
+      }
+    }
+
+    // Kiểm tra checkpoint, xác minh (yêu cầu nhập mã xác minh, xác minh SĐT, v.v.)
+    if (
+      url.includes('/signin/v2/challenge/') ||
+      url.includes('/signin/v2/sl/pwd') ||
+      url.includes('/signin/v2/challenge/pwd') ||
+      url.includes('/signin/v2/challenge/selection')
+    ) {
+      return { status: 4, message: 'Checkpoint, cần xác minh' };
+    }
+
+    // Kiểm tra tài khoản bị khóa/suspended
+    if (
+      (await page.content()).includes('Tài khoản của bạn đã bị tạm ngưng') ||
+      (await page.content()).toLowerCase().includes('account has been suspended')
+    ) {
+      return { status: 5, message: 'Tài khoản bị khóa hoặc suspended' };
+    }
+
+    // Kiểm tra xác minh 2 bước
+    if (
+      url.includes('signin/challenge/2sv') ||
+      url.includes('signin/challenge/ipp')
+    ) {
+      return { status: 6, message: 'Yêu cầu xác minh 2 bước' };
+    }
+
+    // CAPTCHA
+    if (await page.$('iframe[src*="recaptcha"]')) {
+      return { status: 7, message: 'Bị captcha' };
+    }
+
+    // Trường hợp cần xác nhận lại thông tin khác
+    if (
+      (await page.content()).toLowerCase().includes('xác nhận thông tin của bạn') ||
+      (await page.content()).toLowerCase().includes('confirm your information')
+    ) {
+      return { status: 8, message: 'Cần xác nhận lại thông tin' };
+    }
+
+    return { status: 0, message: 'Không xác định' };
+  } catch (err) {
+    return { status: 0, message: 'Lỗi khi xác định trạng thái' };
   }
 }
