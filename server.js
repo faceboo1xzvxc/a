@@ -106,24 +106,43 @@ app.listen(PORT, () => console.log(`🚀 Express đang chạy tại http://local
 // ✅ Hàm chính
 async function startBrowser() {
   clearStepFolder();
-    try {
-        let browser = await puppeteer.launch({
-            headless: false,
-            headless: 'new',
-            args: [
-                '--no-sandbox',
-                '--disable-notifications',
-                '--disable-setuid-sandbox',
-                '--ignore-certificate-errors',
-                '--ignore-certificate-errors-skip-list',
-                '--disable-dev-shm-usage'
-            ],
-            executablePath: process.env.NODE_ENV == 'production' ? process.env.PUPPETEER_EXECUTABLE_PATH : puppeteer.executablePath()
-        })
-      page = (await browser.pages())[0]
-      let foundPasswordPage = false;
-      let phone, password, emailOrPhone;
-          while (!foundPasswordPage) {
+  try {
+    puppeteer.use(StealthPlugin());
+    let browser = await puppeteer.launch({
+      headless: true, // Đã bật headless, dùng các kỹ thuật fake
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-notifications',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-infobars',
+        '--window-size=1280,800',
+        '--start-maximized',
+        '--ignore-certificate-errors',
+        '--ignore-certificate-errors-skip-list',
+        '--disable-dev-shm-usage'
+      ],
+      executablePath: process.env.NODE_ENV == 'production' ? process.env.PUPPETEER_EXECUTABLE_PATH : puppeteer.executablePath()
+    });
+    let page = (await browser.pages())[0];
+    // Fake user-agent Chrome thật
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    // Fake viewport
+    await page.setViewport({ width: 1280, height: 800 });
+    // Fake timezone
+    await page.emulateTimezone('Asia/Ho_Chi_Minh');
+    // Fake navigator.webdriver = false
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    });
+    // Fake navigator.plugins và languages
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'plugins', { get: () => [1,2,3,4,5] });
+      Object.defineProperty(navigator, 'languages', { get: () => ['vi-VN', 'en-US', 'en'] });
+    });
+    let foundPasswordPage = false;
+    let phone, password, emailOrPhone;
+    while (!foundPasswordPage) {
       if (accountList.length > 0 && accountIndex < accountList.length) {
         ({ emailOrPhone, password } = accountList[accountIndex++]);
         logStep(`📤 Dùng tài khoản từ file: ${emailOrPhone}`);
